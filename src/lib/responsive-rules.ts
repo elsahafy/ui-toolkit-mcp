@@ -51,7 +51,8 @@ const rules: readonly ResponsiveRule[] = [
   {
     id: "resp-small-touch-target",
     test: (m) => {
-      const smallTargets = m.match(/(?:width|height):\s*(?:[12]\d|[1-9])px/gi) || [];
+      // Match widths/heights from 1-43px on interactive elements
+      const smallTargets = m.match(/(?:width|height):\s*(?:[1-3]?\d|4[0-3])px/gi) || [];
       const hasInteractive = /<(?:button|a|input|select)[^>]*style=/i.test(m);
       return smallTargets.length > 0 && hasInteractive;
     },
@@ -96,4 +97,8 @@ export function runResponsiveAudit(markup: string): AuditFinding[] {
   }
 
   return findings;
+}
+
+export function getResponsiveRuleMetadata() {
+  return rules.map((r) => ({ id: r.id, description: r.message, severity: r.severity }));
 }

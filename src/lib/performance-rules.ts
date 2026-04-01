@@ -118,3 +118,7 @@ export function runPerformanceAudit(markup: string): AuditFinding[] {
 
   return findings;
 }
+
+export function getPerformanceRuleMetadata() {
+  return rules.map((r) => ({ id: r.id, description: r.message, severity: r.severity }));
+}

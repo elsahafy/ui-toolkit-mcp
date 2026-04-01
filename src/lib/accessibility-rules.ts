@@ -28,12 +28,20 @@ const rules: readonly Rule[] = [
     id: "a11y-input-label",
     level: "A",
     test: (m) => {
-      const inputs = m.match(/<(?:input|select|textarea)(?![^>]*aria-label)/gi) || [];
-      const labels = m.match(/<label[^>]*for=/gi) || [];
-      return inputs.length > labels.length;
+      const inputs = m.match(/<(?:input|select|textarea)[^>]*>/gi) || [];
+      return inputs.some((input) =>
+        !/aria-label/i.test(input) &&
+        !/aria-labelledby/i.test(input) &&
+        !/title=/i.test(input) &&
+        !/id=/i.test(input) || (
+          /id=["']([^"']+)["']/i.test(input) &&
+          !new RegExp(`<label[^>]*for=["']${input.match(/id=["']([^"']+)["']/i)?.[1]}["']`, "i").test(m) &&
+          !/<label[^>]*>[^<]*<(?:input|select|textarea)/i.test(m)
+        )
+      );
     },
     message: "Form inputs found without associated labels",
-    suggestion: "Associate every <input>, <select>, and <textarea> with a <label> using for/id, or use aria-label.",
+    suggestion: "Associate inputs with <label for='id'>, wrapping <label>, aria-label, aria-labelledby, or title attribute.",
     wcag: "1.3.1",
     severity: "critical",
   },
@@ -64,7 +72,11 @@ const rules: readonly Rule[] = [
   {
     id: "a11y-button-text",
     level: "A",
-    test: (m) => /<button[^>]*>[\s]*<\/button>/i.test(m) || /<button[^>]*>\s*<(?:img|svg|i|span)\s/i.test(m) && !/<button[^>]*aria-label/i.test(m),
+    test: (m) => {
+      const emptyButton = /<button[^>]*>[\s]*<\/button>/i.test(m);
+      const iconOnlyButton = /<button[^>]*>\s*<(?:img|svg|i|span)\s/i.test(m) && !/<button[^>]*aria-label/i.test(m);
+      return emptyButton || iconOnlyButton;
+    },
     message: "Buttons found without accessible text content",
     suggestion: "Ensure all buttons have visible text or aria-label. Icon-only buttons need aria-label.",
     wcag: "4.1.2",
@@ -170,4 +182,10 @@ export function runAccessibilityAudit(
   }
 
   return findings;
+}
+
+export function getAccessibilityRuleMetadata() {
+  return rules.map((r) => ({
+    id: r.id, description: r.message, severity: r.severity, wcag: r.wcag,
+  }));
 }
