@@ -1,0 +1,20 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.elsahafy/ui-toolkit-mcp",
+  "description": "Full-stack UI toolkit: 7 tools for component generation, design tokens, auditing, browser inspection, visual diff, Storybook stories, and Figma integration.",
+  "repository": {
+    "url": "https://github.com/elsahafy/ui-toolkit-mcp",
+    "source": "github"
+  },
+  "version": "1.0.0",
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@elsahafy/ui-toolkit-mcp",
+      "version": "1.0.0",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}
