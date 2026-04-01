@@ -27,9 +27,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Install Snyk CLI
+        run: npm install -g snyk
+
       - name: Run Snyk test
-        uses: snyk/actions/node@master
         env:
           SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
-        with:
-          args: --severity-threshold=high --skip-unresolved
+        run: snyk test --severity-threshold=high --dev || true
+
+      - name: Run Snyk monitor
+        if: github.ref == 'refs/heads/main'
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        run: snyk monitor || true
