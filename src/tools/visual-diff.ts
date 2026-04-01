@@ -1,5 +1,6 @@
 import { inflateSync } from "node:zlib";
 import type { ToolResponse, VisualDiffResult } from "../lib/types.js";
+import { validateBase64 } from "../lib/validation.js";
 
 export async function handleVisualDiff(
   args: Record<string, unknown>
@@ -11,16 +12,16 @@ export async function handleVisualDiff(
     return error("Missing required parameters: before_image, after_image");
   }
 
+  const beforeErr = validateBase64(beforeB64, "before_image");
+  if (beforeErr) return error(beforeErr);
+
+  const afterErr = validateBase64(afterB64, "after_image");
+  if (afterErr) return error(afterErr);
+
   const threshold = clamp(args.threshold as number | undefined, 0, 255, 10);
 
-  let beforeBuf: Buffer;
-  let afterBuf: Buffer;
-  try {
-    beforeBuf = Buffer.from(beforeB64, "base64");
-    afterBuf = Buffer.from(afterB64, "base64");
-  } catch {
-    return error("Invalid base64 encoding in before_image or after_image");
-  }
+  const beforeBuf = Buffer.from(beforeB64, "base64");
+  const afterBuf = Buffer.from(afterB64, "base64");
 
   const beforeInfo = parsePngHeader(beforeBuf);
   if (typeof beforeInfo === "string") return error(`before_image: ${beforeInfo}`);
@@ -36,15 +37,11 @@ export async function handleVisualDiff(
 
   // Fast path: identical bytes
   if (beforeBuf.equals(afterBuf)) {
-    const result: VisualDiffResult = {
-      width: beforeInfo.width,
-      height: beforeInfo.height,
+    return formatResult({
+      width: beforeInfo.width, height: beforeInfo.height,
       totalPixels: beforeInfo.width * beforeInfo.height,
-      changedPixels: 0,
-      diffPercentage: 0,
-      match: true,
-    };
-    return formatResult(result);
+      changedPixels: 0, diffPercentage: 0, match: true,
+    });
   }
 
   // Decode pixel data
@@ -75,16 +72,7 @@ export async function handleVisualDiff(
 
   const diffPercentage = Math.round((changedPixels / totalPixels) * 10000) / 100;
 
-  const result: VisualDiffResult = {
-    width,
-    height,
-    totalPixels,
-    changedPixels,
-    diffPercentage,
-    match: changedPixels === 0,
-  };
-
-  return formatResult(result);
+  return formatResult({ width, height, totalPixels, changedPixels, diffPercentage, match: changedPixels === 0 });
 }
 
 // ========================================
@@ -124,8 +112,9 @@ function parsePngHeader(buf: Buffer): PngInfo | string {
 function extractIdatData(buf: Buffer): Buffer {
   const chunks: Buffer[] = [];
   let offset = 8;
-  while (offset < buf.length - 4) {
+  while (offset + 12 <= buf.length) {
     const len = buf.readUInt32BE(offset);
+    if (offset + 12 + len > buf.length) break; // Bounds check: prevent overflow
     const type = buf.subarray(offset + 4, offset + 8).toString("ascii");
     if (type === "IDAT") {
       chunks.push(buf.subarray(offset + 8, offset + 8 + len));
@@ -140,9 +129,14 @@ function decodePngPixels(buf: Buffer, info: PngInfo): Buffer {
   const raw = inflateSync(idatData);
 
   const channels = info.colorType === 6 ? 4 : 3;
-  const stride = info.width * channels + 1; // +1 for filter byte
-  const pixels = Buffer.alloc(info.width * info.height * 4);
+  const stride = info.width * channels + 1;
+  const expectedLen = info.height * stride;
 
+  if (raw.length < expectedLen) {
+    throw new Error(`Decompressed data too short: expected ${expectedLen} bytes, got ${raw.length}`);
+  }
+
+  const pixels = Buffer.alloc(info.width * info.height * 4);
   const prevRow = Buffer.alloc(info.width * channels);
 
   for (let y = 0; y < info.height; y++) {
@@ -166,7 +160,6 @@ function decodePngPixels(buf: Buffer, info: PngInfo): Buffer {
       }
     }
 
-    // Write to RGBA output
     for (let x = 0; x < info.width; x++) {
       const pi = (y * info.width + x) * 4;
       const ri = x * channels;
@@ -191,10 +184,6 @@ function paeth(a: number, b: number, c: number): number {
   if (pb <= pc) return b;
   return c;
 }
-
-// ========================================
-// OUTPUT FORMATTING
-// ========================================
 
 function formatResult(result: VisualDiffResult): ToolResponse {
   const parts: string[] = [];

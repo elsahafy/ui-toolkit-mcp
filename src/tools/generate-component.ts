@@ -1,6 +1,7 @@
 import type { ToolResponse, Framework, Variant, Size } from "../lib/types.js";
 import { getTokens } from "../lib/token-store.js";
 import { generateComponentMarkup } from "../lib/framework-templates.js";
+import { validateMaxLength, validateIdentifier } from "../lib/validation.js";
 
 const FRAMEWORKS = new Set(["react", "vue", "svelte", "angular", "web-components"]);
 const VARIANTS = new Set(["default", "outlined", "filled", "ghost", "elevated"]);
@@ -16,6 +17,12 @@ export async function handleGenerateComponent(
   if (!description || !framework || !componentName) {
     return error("Missing required parameters: description, framework, component_name");
   }
+
+  const descErr = validateMaxLength(description, 2000, "description");
+  if (descErr) return error(descErr);
+
+  const nameErr = validateIdentifier(componentName);
+  if (nameErr) return error(nameErr);
 
   if (!FRAMEWORKS.has(framework)) {
     return error(`Invalid framework: ${framework}. Must be one of: ${[...FRAMEWORKS].join(", ")}`);

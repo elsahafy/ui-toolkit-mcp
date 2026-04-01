@@ -1,5 +1,6 @@
-import type { ToolResponse, WaitForEvent, ComponentNode } from "../lib/types.js";
+import type { ToolResponse, WaitForEvent } from "../lib/types.js";
 import { validateUrl, getPlaywright, getBrowser, getInstallMessage } from "../lib/browser.js";
+import { validateMaxLength } from "../lib/validation.js";
 
 const WAIT_EVENTS = new Set(["load", "domcontentloaded", "networkidle"]);
 
@@ -8,6 +9,9 @@ export async function handleInspectPage(
 ): Promise<ToolResponse> {
   const url = args.target_url as string | undefined;
   if (!url) return error("Missing required parameter: target_url");
+
+  const lenErr = validateMaxLength(url, 2048, "target_url");
+  if (lenErr) return error(lenErr);
 
   const urlError = validateUrl(url);
   if (urlError) return error(urlError);
@@ -42,20 +46,25 @@ export async function handleInspectPage(
       .getAttribute("content")
       .catch(() => "") ?? "";
 
-    // Accessibility tree
+    // Accessibility tree — use ariaSnapshot (Playwright 1.49+) with fallback
     let a11yTree = "";
     try {
-      const snapshot = await page.accessibility.snapshot();
-      a11yTree = snapshot ? JSON.stringify(snapshot, null, 2) : "No accessibility tree available";
+      // Try modern API first
+      a11yTree = await page.locator("body").ariaSnapshot();
     } catch {
-      a11yTree = "Could not capture accessibility tree";
+      try {
+        // Fallback for older Playwright
+        const snapshot = await page.accessibility.snapshot();
+        a11yTree = snapshot ? JSON.stringify(snapshot, null, 2) : "No accessibility tree available";
+      } catch {
+        a11yTree = "Could not capture accessibility tree";
+      }
     }
     if (a11yTree.length > 5000) {
       a11yTree = a11yTree.slice(0, 5000) + "\n... (truncated)";
     }
 
     // Component structure + performance via page.evaluate
-    // Note: this code runs in the browser context, not Node
     const pageData = await page.evaluate(`(() => {
       const semanticTags = ["main", "nav", "header", "footer", "section", "article", "aside", "form"];
 
@@ -108,7 +117,7 @@ export async function handleInspectPage(
     parts.push(`### Component Structure`);
     parts.push("```json\n" + JSON.stringify(pageData.structure, null, 2) + "\n```\n");
     parts.push(`### Accessibility Tree`);
-    parts.push("```json\n" + a11yTree + "\n```\n");
+    parts.push("```\n" + a11yTree + "\n```\n");
 
     if (screenshotBase64) {
       parts.push(`### Screenshot (base64 PNG)`);
@@ -118,7 +127,7 @@ export async function handleInspectPage(
 
     return { content: [{ type: "text", text: parts.join("\n") }] };
   } catch (err) {
-    return error(`Navigation failed: ${err instanceof Error ? err.message : String(err)}`);
+    return error(`Page inspection failed: ${err instanceof Error ? err.message : String(err)}`);
   } finally {
     await page.close().catch(() => {});
   }

@@ -6,6 +6,7 @@ import { handleInspectPage } from "./inspect-page.js";
 import { handleVisualDiff } from "./visual-diff.js";
 import { handleGenerateStory } from "./generate-story.js";
 import { handleExtractFigmaStyles } from "./extract-figma-styles.js";
+import { handleClearTokens } from "./clear-tokens.js";
 
 // ========================================
 // TOOL DEFINITIONS
@@ -284,6 +285,15 @@ export function getToolDefinitions() {
         required: ["figma_file_key", "figma_pat"],
       },
     },
+    {
+      name: "clear_tokens",
+      description:
+        "Clear all design tokens from the active token store. Use this to reset before importing a new set of tokens.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+      },
+    },
   ];
 }
 
@@ -310,6 +320,8 @@ export async function dispatchTool(
       return handleGenerateStory(args);
     case "extract_figma_styles":
       return handleExtractFigmaStyles(args);
+    case "clear_tokens":
+      return handleClearTokens(args);
     default:
       return {
         content: [{ type: "text", text: `Error: Unknown tool: ${name}` }],

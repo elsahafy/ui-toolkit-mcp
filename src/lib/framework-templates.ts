@@ -23,20 +23,35 @@ const sizeMap: Record<Size, { padding: string; fontSize: string; gap: string }> 
   xl: { padding: "1.25rem 2rem", fontSize: "1.25rem", gap: "1.25rem" },
 };
 
+const INCLUDED_CATEGORIES = new Set(["color", "spacing", "typography", "borderRadius", "shadow", "sizing", "opacity"]);
+
+// Track which tokens are actually used during CSS generation
+let usedTokenNames: string[] = [];
+
 function buildTokenStyles(tokens: ReadonlyMap<string, NormalizedToken>): string[] {
-  const used: string[] = [];
+  const lines: string[] = [];
   for (const [, token] of tokens) {
-    if (token.category === "color" || token.category === "spacing" || token.category === "typography") {
-      used.push(`  ${token.cssVariable}: ${token.value};`);
+    if (INCLUDED_CATEGORIES.has(token.category)) {
+      lines.push(`  ${token.cssVariable}: ${token.value};`);
+      usedTokenNames.push(token.cssVariable);
     }
   }
-  return used;
+  return lines;
 }
+
+const variantStyles: Record<Variant, string> = {
+  default: "",
+  outlined: "\n  border: 1px solid var(--color-border, #e0e0e0);\n  background: transparent;",
+  filled: "\n  background: var(--color-primary, #3b82f6);\n  color: var(--color-on-primary, #ffffff);",
+  ghost: "\n  background: transparent;\n  border: none;",
+  elevated: "\n  box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1));",
+};
 
 function buildCSS(name: string, params: GenerateParams): string {
   const sizing = sizeMap[params.size];
   const tokenStyles = params.includeStyles ? buildTokenStyles(params.tokens) : [];
   const tokenBlock = tokenStyles.length > 0 ? `\n  /* Design Tokens */\n${tokenStyles.join("\n")}\n` : "";
+  const variantBlock = variantStyles[params.variant];
 
   const responsiveBlock = params.responsive
     ? `\n\n@media (max-width: 768px) {\n  .${kebab(name)} {\n    padding: ${sizing.padding};\n    font-size: ${sizing.fontSize};\n  }\n}`
@@ -52,12 +67,15 @@ function buildCSS(name: string, params: GenerateParams): string {
   line-height: 1.5;
   color: var(--color-text, #1a1a1a);
   background: var(--color-surface, #ffffff);
-  border-radius: var(--radius-md, 0.5rem);
+  border-radius: var(--radius-md, 0.5rem);${variantBlock}
 }${responsiveBlock}`;
 }
 
 function kebab(name: string): string {
-  return name.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+  return name
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
+    .toLowerCase();
 }
 
 function generateReact(params: GenerateParams): ComponentOutput {
@@ -110,7 +128,7 @@ describe("${componentName}", () => {
 });`
     : "";
 
-  return { componentName, framework: "react", markup, styles: css, test, tokensUsed: getTokenNames(params.tokens) };
+  return { componentName, framework: "react", markup, styles: css, test, tokensUsed: getUsedTokenNames() };
 }
 
 function generateVue(params: GenerateParams): ComponentOutput {
@@ -140,7 +158,7 @@ defineProps<{
 ${css}
 </style>`;
 
-  return { componentName, framework: "vue", markup, styles: "", test: "", tokensUsed: getTokenNames(params.tokens) };
+  return { componentName, framework: "vue", markup, styles: "", test: "", tokensUsed: getUsedTokenNames() };
 }
 
 function generateSvelte(params: GenerateParams): ComponentOutput {
@@ -167,7 +185,7 @@ function generateSvelte(params: GenerateParams): ComponentOutput {
 ${css}
 </style>`;
 
-  return { componentName, framework: "svelte", markup, styles: "", test: "", tokensUsed: getTokenNames(params.tokens) };
+  return { componentName, framework: "svelte", markup, styles: "", test: "", tokensUsed: getUsedTokenNames() };
 }
 
 function generateAngular(params: GenerateParams): ComponentOutput {
@@ -198,7 +216,7 @@ ${css.split("\n").map((l) => "    " + l).join("\n")}
 })
 export class ${componentName}Component {}`;
 
-  return { componentName, framework: "angular", markup, styles: "", test: "", tokensUsed: getTokenNames(params.tokens) };
+  return { componentName, framework: "angular", markup, styles: "", test: "", tokensUsed: getUsedTokenNames() };
 }
 
 function generateWebComponent(params: GenerateParams): ComponentOutput {
@@ -235,11 +253,11 @@ customElements.define("${tagName}", ${componentName});
 
 export { ${componentName} };`;
 
-  return { componentName, framework: "web-components", markup, styles: "", test: "", tokensUsed: getTokenNames(params.tokens) };
+  return { componentName, framework: "web-components", markup, styles: "", test: "", tokensUsed: getUsedTokenNames() };
 }
 
-function getTokenNames(tokens: ReadonlyMap<string, NormalizedToken>): string[] {
-  return [...tokens.values()].map((t) => t.cssVariable);
+function getUsedTokenNames(): string[] {
+  return [...usedTokenNames];
 }
 
 const generators: Record<Framework, (params: GenerateParams) => ComponentOutput> = {
@@ -251,6 +269,7 @@ const generators: Record<Framework, (params: GenerateParams) => ComponentOutput>
 };
 
 export function generateComponentMarkup(params: GenerateParams): ComponentOutput {
+  usedTokenNames = []; // Reset tracking for each generation
   const generator = generators[params.framework];
   return generator(params);
 }

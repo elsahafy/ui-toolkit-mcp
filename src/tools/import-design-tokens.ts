@@ -1,5 +1,6 @@
 import type { ToolResponse, NormalizedToken, TokenFormat, MergeStrategy } from "../lib/types.js";
 import { setTokens, mergeTokens, getTokenCount } from "../lib/token-store.js";
+import { validateMaxLength, sanitizeNamespace } from "../lib/validation.js";
 
 const FORMATS = new Set(["figma-tokens", "style-dictionary", "css-custom-properties"]);
 const STRATEGIES = new Set(["replace", "merge-overwrite", "merge-keep"]);
@@ -14,11 +15,15 @@ export async function handleImportDesignTokens(
     return error("Missing required parameters: tokens_json, format");
   }
 
+  const lenErr = validateMaxLength(tokensJson, 500000, "tokens_json");
+  if (lenErr) return error(lenErr);
+
   if (!FORMATS.has(format)) {
     return error(`Invalid format: ${format}. Must be one of: ${[...FORMATS].join(", ")}`);
   }
 
-  const namespace = (args.namespace as string) || "";
+  const rawNamespace = (args.namespace as string) || "";
+  const namespace = rawNamespace ? sanitizeNamespace(rawNamespace) : "";
   const strategy = ((args.merge_strategy as string) || "replace") as MergeStrategy;
 
   if (!STRATEGIES.has(strategy)) {

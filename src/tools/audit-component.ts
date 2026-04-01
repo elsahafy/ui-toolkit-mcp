@@ -2,6 +2,7 @@ import type { ToolResponse, AuditCategory, AuditFinding, AuditReport, WcagLevel 
 import { runAccessibilityAudit } from "../lib/accessibility-rules.js";
 import { runPerformanceAudit } from "../lib/performance-rules.js";
 import { runResponsiveAudit } from "../lib/responsive-rules.js";
+import { validateMaxLength } from "../lib/validation.js";
 
 const CATEGORIES = new Set(["accessibility", "performance", "responsive"]);
 const WCAG_LEVELS = new Set(["A", "AA", "AAA"]);
@@ -15,6 +16,9 @@ export async function handleAuditComponent(
   if (!markup) {
     return error("Missing required parameter: markup");
   }
+
+  const lenErr = validateMaxLength(markup, 200000, "markup");
+  if (lenErr) return error(lenErr);
 
   const componentName = (args.component_name as string) || "Unnamed Component";
   const framework = (args.framework as string) || "html";
