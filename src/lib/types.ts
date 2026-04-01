@@ -58,3 +58,45 @@ export interface ToolResponse {
   readonly content: readonly { readonly type: "text"; readonly text: string }[];
   readonly isError?: boolean;
 }
+
+// ========================================
+// PHASE 2: BROWSER TYPES
+// ========================================
+
+export type WaitForEvent = "load" | "domcontentloaded" | "networkidle";
+
+export interface PageMetadata {
+  readonly title: string;
+  readonly description: string;
+  readonly viewport: { readonly width: number; readonly height: number };
+  readonly pageUrl: string;
+}
+
+export interface ComponentNode {
+  readonly tag: string;
+  readonly role: string | null;
+  readonly children: readonly ComponentNode[];
+}
+
+export interface PerformanceMetrics {
+  readonly loadTimeMs: number;
+  readonly resourceCount: number;
+  readonly domNodes: number;
+}
+
+export interface PageInspection {
+  readonly metadata: PageMetadata;
+  readonly accessibilityTree: string;
+  readonly componentStructure: readonly ComponentNode[];
+  readonly performance: PerformanceMetrics;
+  readonly screenshotBase64: string | null;
+}
+
+export interface VisualDiffResult {
+  readonly width: number;
+  readonly height: number;
+  readonly totalPixels: number;
+  readonly changedPixels: number;
+  readonly diffPercentage: number;
+  readonly match: boolean;
+}

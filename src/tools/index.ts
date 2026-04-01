@@ -2,6 +2,8 @@ import type { ToolResponse } from "../lib/types.js";
 import { handleGenerateComponent } from "./generate-component.js";
 import { handleImportDesignTokens } from "./import-design-tokens.js";
 import { handleAuditComponent } from "./audit-component.js";
+import { handleInspectPage } from "./inspect-page.js";
+import { handleVisualDiff } from "./visual-diff.js";
 
 // ========================================
 // TOOL DEFINITIONS
@@ -139,6 +141,74 @@ export function getToolDefinitions() {
         required: ["markup"],
       },
     },
+    {
+      name: "inspect_page",
+      description:
+        "Inspect a live web page using a headless browser. Extracts accessibility tree, component structure, performance metrics, and an optional screenshot. Requires Playwright (optional dependency).",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          target_url: {
+            type: "string",
+            description:
+              "The URL to inspect (http:// or https:// only). Private/internal addresses are blocked.",
+            maxLength: 2048,
+          },
+          viewport_width: {
+            type: "number",
+            description: "Viewport width in pixels (320-3840)",
+            default: 1280,
+          },
+          viewport_height: {
+            type: "number",
+            description: "Viewport height in pixels (240-2160)",
+            default: 720,
+          },
+          wait_for: {
+            type: "string",
+            enum: ["load", "domcontentloaded", "networkidle"],
+            description: "When to consider the page loaded",
+            default: "load",
+          },
+          timeout_ms: {
+            type: "number",
+            description: "Navigation timeout in milliseconds (5000-60000)",
+            default: 30000,
+          },
+          include_screenshot: {
+            type: "boolean",
+            description: "Include a base64 PNG screenshot in the response",
+            default: true,
+          },
+        },
+        required: ["target_url"],
+      },
+    },
+    {
+      name: "visual_diff",
+      description:
+        "Compare two PNG screenshots pixel-by-pixel for visual regression testing. Returns diff statistics including changed pixel count and percentage. Does not require Playwright.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          before_image: {
+            type: "string",
+            description: "Base64-encoded PNG of the 'before' snapshot (no data URI prefix)",
+          },
+          after_image: {
+            type: "string",
+            description: "Base64-encoded PNG of the 'after' snapshot (no data URI prefix)",
+          },
+          threshold: {
+            type: "number",
+            description:
+              "Per-channel difference threshold (0-255) below which pixels are considered identical",
+            default: 10,
+          },
+        },
+        required: ["before_image", "after_image"],
+      },
+    },
   ];
 }
 
@@ -157,6 +227,10 @@ export async function dispatchTool(
       return handleImportDesignTokens(args);
     case "audit_component":
       return handleAuditComponent(args);
+    case "inspect_page":
+      return handleInspectPage(args);
+    case "visual_diff":
+      return handleVisualDiff(args);
     default:
       return {
         content: [{ type: "text", text: `Error: Unknown tool: ${name}` }],
