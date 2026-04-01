@@ -25,6 +25,12 @@ export function getResourceDefinitions() {
       mimeType: "application/json",
     },
     {
+      uri: "ui://server/health",
+      name: "Server Health",
+      description: "Server version, tool count, token count, and uptime.",
+      mimeType: "application/json",
+    },
+    {
       uri: "ui://audit/checklist",
       name: "Audit Checklist",
       description:
@@ -54,6 +60,22 @@ export function readResource(uri: string): { uri: string; mimeType: string; text
         uri,
         mimeType: "application/json",
         text: JSON.stringify(getComponentPatterns(), null, 2),
+      };
+
+    case "ui://server/health":
+      return {
+        uri,
+        mimeType: "application/json",
+        text: JSON.stringify({
+          name: "@elsahafy/ui-toolkit-mcp",
+          version: "2.0.0",
+          tools: 13,
+          resources: 4,
+          prompts: 3,
+          tokenCount: getTokenCount(),
+          nodeVersion: process.version,
+          uptime: Math.round(process.uptime()),
+        }, null, 2),
       };
 
     case "ui://audit/checklist":

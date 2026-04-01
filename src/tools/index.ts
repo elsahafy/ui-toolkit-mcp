@@ -7,6 +7,10 @@ import { handleVisualDiff } from "./visual-diff.js";
 import { handleGenerateStory } from "./generate-story.js";
 import { handleExtractFigmaStyles } from "./extract-figma-styles.js";
 import { handleClearTokens } from "./clear-tokens.js";
+import { handleExportTokens } from "./export-tokens.js";
+import { handleLiveAudit } from "./live-audit.js";
+import { handleAutoFixComponent } from "./auto-fix-component.js";
+import { handleResponsivePreview } from "./responsive-preview.js";
 
 // ========================================
 // TOOL DEFINITIONS
@@ -294,6 +298,85 @@ export function getToolDefinitions() {
         properties: {},
       },
     },
+    {
+      name: "export_tokens",
+      description:
+        "Export active design tokens as CSS custom properties, JSON, or Style Dictionary format.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          format: {
+            type: "string",
+            enum: ["css", "json", "style-dictionary"],
+            description: "Export format",
+            default: "css",
+          },
+        },
+      },
+    },
+    {
+      name: "live_audit",
+      description:
+        "Audit a live web page by navigating to it and running accessibility, performance, and responsive checks on the rendered HTML. Requires Playwright.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          target_url: {
+            type: "string",
+            description: "URL to audit (http/https only, private IPs blocked)",
+            maxLength: 2048,
+          },
+          categories: {
+            type: "array",
+            items: { type: "string", enum: ["accessibility", "performance", "responsive"] },
+            description: "Audit categories to run",
+          },
+          wcag_level: {
+            type: "string",
+            enum: ["A", "AA", "AAA"],
+            description: "WCAG conformance level",
+            default: "AA",
+          },
+        },
+        required: ["target_url"],
+      },
+    },
+    {
+      name: "auto_fix_component",
+      description:
+        "Automatically fix common accessibility and performance issues in markup based on audit findings. Returns the corrected markup with a list of applied fixes.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          markup: {
+            type: "string",
+            description: "The markup to fix",
+            maxLength: 200000,
+          },
+          findings: {
+            type: "array",
+            description: "Array of AuditFinding objects from audit_component",
+          },
+        },
+        required: ["markup", "findings"],
+      },
+    },
+    {
+      name: "responsive_preview",
+      description:
+        "Screenshot a URL at mobile (375px), tablet (768px), and desktop (1280px) viewports for responsive comparison. Requires Playwright.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          target_url: {
+            type: "string",
+            description: "URL to preview (http/https only, private IPs blocked)",
+            maxLength: 2048,
+          },
+        },
+        required: ["target_url"],
+      },
+    },
   ];
 }
 
@@ -322,6 +405,14 @@ export async function dispatchTool(
       return handleExtractFigmaStyles(args);
     case "clear_tokens":
       return handleClearTokens(args);
+    case "export_tokens":
+      return handleExportTokens(args);
+    case "live_audit":
+      return handleLiveAudit(args);
+    case "auto_fix_component":
+      return handleAutoFixComponent(args);
+    case "responsive_preview":
+      return handleResponsivePreview(args);
     default:
       return {
         content: [{ type: "text", text: `Error: Unknown tool: ${name}` }],
