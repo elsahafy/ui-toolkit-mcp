@@ -11,6 +11,7 @@ import { handleExportTokens } from "./export-tokens.js";
 import { handleLiveAudit } from "./live-audit.js";
 import { handleAutoFixComponent } from "./auto-fix-component.js";
 import { handleResponsivePreview } from "./responsive-preview.js";
+import { handleComposeLayout } from "./compose-layout.js";
 
 // ========================================
 // TOOL DEFINITIONS
@@ -62,6 +63,11 @@ export function getToolDefinitions() {
             type: "boolean",
             description: "Generate a companion test file",
             default: false,
+          },
+          auto_audit: {
+            type: "boolean",
+            description: "Automatically audit the generated component and report findings (default: true)",
+            default: true,
           },
           responsive: {
             type: "boolean",
@@ -377,6 +383,32 @@ export function getToolDefinitions() {
         required: ["target_url"],
       },
     },
+    {
+      name: "compose_layout",
+      description:
+        "Compose a page layout from previously generated components in the registry. Produces a full page with imports, semantic structure, and skip navigation.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          component_names: {
+            type: "array",
+            items: { type: "string" },
+            description: "Array of component names from the registry to compose into a page",
+          },
+          framework: {
+            type: "string",
+            enum: ["react", "vue", "svelte", "angular", "web-components"],
+            description: "Target framework for the composed page",
+          },
+          layout_description: {
+            type: "string",
+            description: "Description of the page layout",
+            maxLength: 2000,
+          },
+        },
+        required: ["component_names", "framework"],
+      },
+    },
   ];
 }
 
@@ -413,6 +445,8 @@ export async function dispatchTool(
       return handleAutoFixComponent(args);
     case "responsive_preview":
       return handleResponsivePreview(args);
+    case "compose_layout":
+      return handleComposeLayout(args);
     default:
       return {
         content: [{ type: "text", text: `Error: Unknown tool: ${name}` }],

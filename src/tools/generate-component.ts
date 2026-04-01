@@ -2,6 +2,8 @@ import type { ToolResponse, Framework, Variant, Size } from "../lib/types.js";
 import { getTokens } from "../lib/token-store.js";
 import { generateComponentMarkup } from "../lib/framework-templates.js";
 import { validateMaxLength, validateIdentifier } from "../lib/validation.js";
+import { registerComponent } from "../lib/component-registry.js";
+import { handleAuditComponent } from "./audit-component.js";
 
 const FRAMEWORKS = new Set(["react", "vue", "svelte", "angular", "web-components"]);
 const VARIANTS = new Set(["default", "outlined", "filled", "ghost", "elevated"]);
@@ -70,6 +72,43 @@ export async function handleGenerateComponent(
   if (output.tokensUsed.length > 0) {
     parts.push(`### Design Tokens Used\n${output.tokensUsed.map((t) => `- \`${t}\``).join("\n")}\n`);
   }
+
+  // Auto-audit if enabled (default: true)
+  const autoAudit = args.auto_audit !== false;
+  let auditScore: number | null = null;
+
+  if (autoAudit) {
+    const auditResult = await handleAuditComponent({
+      markup: output.markup,
+      component_name: componentName,
+      categories: ["accessibility", "performance", "responsive"],
+      wcag_level: "AA",
+      framework: framework,
+    });
+
+    if (!auditResult.isError) {
+      const report = JSON.parse(auditResult.content[0].text);
+      auditScore = report.score;
+      parts.push(`### Auto-Audit Score: ${report.score}/100`);
+      if (report.summary.critical > 0 || report.summary.major > 0) {
+        parts.push(`\n**${report.summary.critical} critical, ${report.summary.major} major issues found.**`);
+        for (const f of report.findings.filter((f: { severity: string }) => f.severity === "critical" || f.severity === "major")) {
+          parts.push(`- ${f.severity}: ${f.message}`);
+        }
+      }
+      parts.push("");
+    }
+  }
+
+  // Register in component registry
+  registerComponent({
+    name: componentName,
+    framework: framework as Framework,
+    markup: output.markup,
+    tokensUsed: output.tokensUsed,
+    auditScore,
+    timestamp: new Date().toISOString(),
+  });
 
   return { content: [{ type: "text", text: parts.join("\n") }] };
 }

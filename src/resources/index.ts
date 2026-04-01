@@ -3,6 +3,7 @@ import { getComponentPatterns } from "../lib/pattern-library.js";
 import { getAccessibilityRuleMetadata } from "../lib/accessibility-rules.js";
 import { getPerformanceRuleMetadata } from "../lib/performance-rules.js";
 import { getResponsiveRuleMetadata } from "../lib/responsive-rules.js";
+import { getRegistryAsJSON, getComponentCount } from "../lib/component-registry.js";
 
 // ========================================
 // RESOURCE DEFINITIONS
@@ -22,6 +23,13 @@ export function getResourceDefinitions() {
       name: "Component Pattern Library",
       description:
         "Reference library of common UI component patterns with accessibility requirements, variants, and structure.",
+      mimeType: "application/json",
+    },
+    {
+      uri: "ui://components/registry",
+      name: "Component Registry",
+      description:
+        "Registry of all generated components with metadata (name, framework, tokens used, audit score, timestamp).",
       mimeType: "application/json",
     },
     {
@@ -62,6 +70,15 @@ export function readResource(uri: string): { uri: string; mimeType: string; text
         text: JSON.stringify(getComponentPatterns(), null, 2),
       };
 
+    case "ui://components/registry":
+      return {
+        uri,
+        mimeType: "application/json",
+        text: getComponentCount() > 0
+          ? getRegistryAsJSON()
+          : JSON.stringify({ message: "No components generated yet. Use generate_component to create components.", count: 0 }, null, 2),
+      };
+
     case "ui://server/health":
       return {
         uri,
@@ -69,9 +86,10 @@ export function readResource(uri: string): { uri: string; mimeType: string; text
         text: JSON.stringify({
           name: "@elsahafy/ui-toolkit-mcp",
           version: "2.0.0",
-          tools: 13,
-          resources: 4,
+          tools: 14,
+          resources: 5,
           prompts: 3,
+          components: getComponentCount(),
           tokenCount: getTokenCount(),
           nodeVersion: process.version,
           uptime: Math.round(process.uptime()),
