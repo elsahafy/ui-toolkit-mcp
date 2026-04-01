@@ -21,7 +21,7 @@ import { getPromptDefinitions, getPrompt } from "./prompts/index.js";
 const server = new Server(
   {
     name: "@elsahafy/ui-toolkit-mcp",
-    version: "1.0.0",
+    version: "2.0.0",
   },
   {
     capabilities: {

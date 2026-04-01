@@ -84,14 +84,6 @@ export interface PerformanceMetrics {
   readonly domNodes: number;
 }
 
-export interface PageInspection {
-  readonly metadata: PageMetadata;
-  readonly accessibilityTree: string;
-  readonly componentStructure: readonly ComponentNode[];
-  readonly performance: PerformanceMetrics;
-  readonly screenshotBase64: string | null;
-}
-
 export interface VisualDiffResult {
   readonly width: number;
   readonly height: number;
@@ -112,13 +104,6 @@ export interface DetectedProp {
   readonly type: string;
   readonly defaultValue: string;
   readonly required: boolean;
-}
-
-export interface StoryOutput {
-  readonly componentName: string;
-  readonly framework: StoryFramework;
-  readonly storyCode: string;
-  readonly detectedProps: readonly DetectedProp[];
 }
 
 export interface FigmaColor {

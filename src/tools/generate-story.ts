@@ -1,5 +1,6 @@
 import type { ToolResponse, StoryFramework } from "../lib/types.js";
 import { detectProps, buildStoryCSF3 } from "../lib/story-templates.js";
+import { validateMaxLength, validateIdentifier } from "../lib/validation.js";
 
 const FRAMEWORKS = new Set(["react", "vue", "svelte", "angular"]);
 
@@ -13,6 +14,12 @@ export async function handleGenerateStory(
   if (!componentCode || !framework || !componentName) {
     return error("Missing required parameters: component_code, framework, component_name");
   }
+
+  const codeErr = validateMaxLength(componentCode, 200000, "component_code");
+  if (codeErr) return error(codeErr);
+
+  const nameErr = validateIdentifier(componentName);
+  if (nameErr) return error(nameErr);
 
   if (!FRAMEWORKS.has(framework)) {
     return error(`Invalid framework: ${framework}. Must be one of: ${[...FRAMEWORKS].join(", ")}`);

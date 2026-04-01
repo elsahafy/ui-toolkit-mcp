@@ -6,6 +6,12 @@ import { handleInspectPage } from "./inspect-page.js";
 import { handleVisualDiff } from "./visual-diff.js";
 import { handleGenerateStory } from "./generate-story.js";
 import { handleExtractFigmaStyles } from "./extract-figma-styles.js";
+import { handleClearTokens } from "./clear-tokens.js";
+import { handleExportTokens } from "./export-tokens.js";
+import { handleLiveAudit } from "./live-audit.js";
+import { handleAutoFixComponent } from "./auto-fix-component.js";
+import { handleResponsivePreview } from "./responsive-preview.js";
+import { handleComposeLayout } from "./compose-layout.js";
 
 // ========================================
 // TOOL DEFINITIONS
@@ -57,6 +63,11 @@ export function getToolDefinitions() {
             type: "boolean",
             description: "Generate a companion test file",
             default: false,
+          },
+          auto_audit: {
+            type: "boolean",
+            description: "Automatically audit the generated component and report findings (default: true)",
+            default: true,
           },
           responsive: {
             type: "boolean",
@@ -284,6 +295,120 @@ export function getToolDefinitions() {
         required: ["figma_file_key", "figma_pat"],
       },
     },
+    {
+      name: "clear_tokens",
+      description:
+        "Clear all design tokens from the active token store. Use this to reset before importing a new set of tokens.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {},
+      },
+    },
+    {
+      name: "export_tokens",
+      description:
+        "Export active design tokens as CSS custom properties, JSON, or Style Dictionary format.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          format: {
+            type: "string",
+            enum: ["css", "json", "style-dictionary"],
+            description: "Export format",
+            default: "css",
+          },
+        },
+      },
+    },
+    {
+      name: "live_audit",
+      description:
+        "Audit a live web page by navigating to it and running accessibility, performance, and responsive checks on the rendered HTML. Requires Playwright.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          target_url: {
+            type: "string",
+            description: "URL to audit (http/https only, private IPs blocked)",
+            maxLength: 2048,
+          },
+          categories: {
+            type: "array",
+            items: { type: "string", enum: ["accessibility", "performance", "responsive"] },
+            description: "Audit categories to run",
+          },
+          wcag_level: {
+            type: "string",
+            enum: ["A", "AA", "AAA"],
+            description: "WCAG conformance level",
+            default: "AA",
+          },
+        },
+        required: ["target_url"],
+      },
+    },
+    {
+      name: "auto_fix_component",
+      description:
+        "Automatically fix common accessibility and performance issues in markup based on audit findings. Returns the corrected markup with a list of applied fixes.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          markup: {
+            type: "string",
+            description: "The markup to fix",
+            maxLength: 200000,
+          },
+          findings: {
+            type: "array",
+            description: "Array of AuditFinding objects from audit_component",
+          },
+        },
+        required: ["markup", "findings"],
+      },
+    },
+    {
+      name: "responsive_preview",
+      description:
+        "Screenshot a URL at mobile (375px), tablet (768px), and desktop (1280px) viewports for responsive comparison. Requires Playwright.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          target_url: {
+            type: "string",
+            description: "URL to preview (http/https only, private IPs blocked)",
+            maxLength: 2048,
+          },
+        },
+        required: ["target_url"],
+      },
+    },
+    {
+      name: "compose_layout",
+      description:
+        "Compose a page layout from previously generated components in the registry. Produces a full page with imports, semantic structure, and skip navigation.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          component_names: {
+            type: "array",
+            items: { type: "string" },
+            description: "Array of component names from the registry to compose into a page",
+          },
+          framework: {
+            type: "string",
+            enum: ["react", "vue", "svelte", "angular", "web-components"],
+            description: "Target framework for the composed page",
+          },
+          layout_description: {
+            type: "string",
+            description: "Description of the page layout",
+            maxLength: 2000,
+          },
+        },
+        required: ["component_names", "framework"],
+      },
+    },
   ];
 }
 
@@ -310,6 +435,18 @@ export async function dispatchTool(
       return handleGenerateStory(args);
     case "extract_figma_styles":
       return handleExtractFigmaStyles(args);
+    case "clear_tokens":
+      return handleClearTokens(args);
+    case "export_tokens":
+      return handleExportTokens(args);
+    case "live_audit":
+      return handleLiveAudit(args);
+    case "auto_fix_component":
+      return handleAutoFixComponent(args);
+    case "responsive_preview":
+      return handleResponsivePreview(args);
+    case "compose_layout":
+      return handleComposeLayout(args);
     default:
       return {
         content: [{ type: "text", text: `Error: Unknown tool: ${name}` }],

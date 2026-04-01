@@ -1,5 +1,6 @@
 import type { ToolResponse, NormalizedToken, MergeStrategy, FigmaColor } from "../lib/types.js";
 import { setTokens, mergeTokens, getTokenCount } from "../lib/token-store.js";
+import { validateMaxLength, sanitizeNamespace } from "../lib/validation.js";
 
 const STRATEGIES = new Set(["replace", "merge-overwrite", "merge-keep"]);
 const FILE_KEY_RE = /^[a-zA-Z0-9_-]+$/;
@@ -15,11 +16,15 @@ export async function handleExtractFigmaStyles(
     return error("Missing required parameters: figma_file_key, figma_pat");
   }
 
+  const keyLenErr = validateMaxLength(fileKey, 100, "figma_file_key");
+  if (keyLenErr) return error(keyLenErr);
+
   if (!FILE_KEY_RE.test(fileKey)) {
     return error("Invalid figma_file_key. Use the alphanumeric ID from the Figma file URL.");
   }
 
-  const namespace = (args.namespace as string) || "";
+  const rawNamespace = (args.namespace as string) || "";
+  const namespace = rawNamespace ? sanitizeNamespace(rawNamespace) : "";
   const strategy = ((args.merge_strategy as string) || "replace") as MergeStrategy;
   if (!STRATEGIES.has(strategy)) {
     return error(`Invalid merge_strategy: ${strategy}`);
@@ -31,8 +36,9 @@ export async function handleExtractFigmaStyles(
   let styleNodes: { name: string; nodeId: string; styleType: string }[] = [];
 
   if (Array.isArray(args.node_ids)) {
+    // When node_ids are provided, we detect the style type from the node data later
     styleNodes = (args.node_ids as string[]).map((id) => ({
-      name: id, nodeId: id, styleType: "FILL",
+      name: id, nodeId: id, styleType: "AUTO",
     }));
   } else {
     const stylesRes = await safeFetch(`${FIGMA_API}/files/${fileKey}/styles`, headers, pat);
@@ -71,7 +77,10 @@ export async function handleExtractFigmaStyles(
     const tokenName = sanitizeName(styleNode.name);
     const prefix = namespace ? `--${namespace}-${tokenName}` : `--${tokenName}`;
 
-    if (styleNode.styleType === "FILL") {
+    // Auto-detect type when node_ids were provided directly
+    const resolvedType = styleNode.styleType === "AUTO" ? detectNodeType(doc) : styleNode.styleType;
+
+    if (resolvedType === "FILL") {
       const fills = doc.fills as { color?: FigmaColor }[] | undefined;
       const fill = fills?.[0];
       if (fill?.color) {
@@ -81,7 +90,7 @@ export async function handleExtractFigmaStyles(
           type: "color", category: "color", description: styleNode.name,
         });
       } else { skipped++; }
-    } else if (styleNode.styleType === "TEXT") {
+    } else if (resolvedType === "TEXT") {
       const style = doc.style as Record<string, unknown> | undefined;
       if (style) {
         const base = prefix;
@@ -102,7 +111,7 @@ export async function handleExtractFigmaStyles(
           value: `${style.lineHeightPx}px`, type: "dimension", category: "typography", description: styleNode.name,
         });
       } else { skipped++; }
-    } else if (styleNode.styleType === "EFFECT") {
+    } else if (resolvedType === "EFFECT") {
       const effects = doc.effects as { type: string; color?: FigmaColor; offset?: { x: number; y: number }; radius?: number; spread?: number }[] | undefined;
       if (effects?.length) {
         const cssValues = effects.map(effectToCSS).filter(Boolean);
@@ -171,13 +180,23 @@ function effectToCSS(e: { type: string; color?: FigmaColor; offset?: { x: number
   return "";
 }
 
+function detectNodeType(doc: Record<string, unknown>): string {
+  if (doc.style && typeof doc.style === "object") return "TEXT";
+  if (Array.isArray(doc.effects) && (doc.effects as unknown[]).length > 0) return "EFFECT";
+  if (Array.isArray(doc.fills)) return "FILL";
+  return "FILL";
+}
+
 async function safeFetch(
   fetchUrl: string,
   headers: Record<string, string>,
   pat: string
 ): Promise<{ data?: unknown; error?: string }> {
   try {
-    const res = await fetch(fetchUrl, { headers });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30000);
+    const res = await fetch(fetchUrl, { headers, signal: controller.signal });
+    clearTimeout(timeout);
     if (!res.ok) {
       const status = res.status;
       if (status === 403) return { error: "Figma API returned 403. Check that your personal access token is valid and has access to this file." };
