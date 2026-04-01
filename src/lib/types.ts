@@ -100,3 +100,30 @@ export interface VisualDiffResult {
   readonly diffPercentage: number;
   readonly match: boolean;
 }
+
+// ========================================
+// PHASE 3: STORYBOOK & FIGMA TYPES
+// ========================================
+
+export type StoryFramework = "react" | "vue" | "svelte" | "angular";
+
+export interface DetectedProp {
+  readonly name: string;
+  readonly type: string;
+  readonly defaultValue: string;
+  readonly required: boolean;
+}
+
+export interface StoryOutput {
+  readonly componentName: string;
+  readonly framework: StoryFramework;
+  readonly storyCode: string;
+  readonly detectedProps: readonly DetectedProp[];
+}
+
+export interface FigmaColor {
+  readonly r: number;
+  readonly g: number;
+  readonly b: number;
+  readonly a: number;
+}

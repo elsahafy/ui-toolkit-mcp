@@ -4,6 +4,8 @@ import { handleImportDesignTokens } from "./import-design-tokens.js";
 import { handleAuditComponent } from "./audit-component.js";
 import { handleInspectPage } from "./inspect-page.js";
 import { handleVisualDiff } from "./visual-diff.js";
+import { handleGenerateStory } from "./generate-story.js";
+import { handleExtractFigmaStyles } from "./extract-figma-styles.js";
 
 // ========================================
 // TOOL DEFINITIONS
@@ -209,6 +211,79 @@ export function getToolDefinitions() {
         required: ["before_image", "after_image"],
       },
     },
+    {
+      name: "generate_story",
+      description:
+        "Auto-generate a Storybook story file (CSF3 format) for a UI component. Detects props from code, includes default story, variant stories, play functions, and accessibility addon config.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          component_code: {
+            type: "string",
+            description: "Full source code of the component to generate stories for",
+            maxLength: 200000,
+          },
+          framework: {
+            type: "string",
+            enum: ["react", "vue", "svelte", "angular"],
+            description: "Framework the component is written in",
+          },
+          component_name: {
+            type: "string",
+            description: "PascalCase name of the component (e.g., 'ProductCard')",
+            maxLength: 100,
+          },
+          story_title: {
+            type: "string",
+            description:
+              "Storybook story title/path (e.g., 'Components/ProductCard'). Defaults to 'Components/{component_name}'",
+            maxLength: 200,
+          },
+        },
+        required: ["component_code", "framework", "component_name"],
+      },
+    },
+    {
+      name: "extract_figma_styles",
+      description:
+        "Extract design tokens (colors, typography, effects) from a Figma file via the Figma REST API. Normalizes tokens and loads them into the active token store. Requires a Figma Personal Access Token.",
+      inputSchema: {
+        type: "object" as const,
+        properties: {
+          figma_file_key: {
+            type: "string",
+            description:
+              "The Figma file key (alphanumeric ID from the file URL, e.g., 'abc123XYZ')",
+            maxLength: 100,
+          },
+          figma_pat: {
+            type: "string",
+            description:
+              "Figma Personal Access Token for API access. Not stored or logged. Generate at figma.com/developers/api#access-tokens",
+            maxLength: 500,
+          },
+          node_ids: {
+            type: "array",
+            items: { type: "string" },
+            description:
+              "Optional specific node IDs to extract. If omitted, extracts all published styles.",
+          },
+          namespace: {
+            type: "string",
+            description:
+              "Optional prefix for extracted token CSS variables (e.g., 'figma' produces --figma-color-primary)",
+            maxLength: 50,
+          },
+          merge_strategy: {
+            type: "string",
+            enum: ["replace", "merge-overwrite", "merge-keep"],
+            description: "How to handle conflicts with existing tokens",
+            default: "replace",
+          },
+        },
+        required: ["figma_file_key", "figma_pat"],
+      },
+    },
   ];
 }
 
@@ -231,6 +306,10 @@ export async function dispatchTool(
       return handleInspectPage(args);
     case "visual_diff":
       return handleVisualDiff(args);
+    case "generate_story":
+      return handleGenerateStory(args);
+    case "extract_figma_styles":
+      return handleExtractFigmaStyles(args);
     default:
       return {
         content: [{ type: "text", text: `Error: Unknown tool: ${name}` }],
