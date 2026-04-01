@@ -43,6 +43,28 @@ export function getPromptDefinitions() {
         },
       ],
     },
+    {
+      name: "design_to_code",
+      description:
+        "Full design-to-code workflow: extract Figma styles, generate components, audit each, and generate Storybook stories",
+      arguments: [
+        {
+          name: "figma_file_key",
+          description: "Figma file key (alphanumeric ID from file URL)",
+          required: true,
+        },
+        {
+          name: "framework",
+          description: "Target framework: react, vue, svelte, angular",
+          required: true,
+        },
+        {
+          name: "sections",
+          description: "Comma-separated component names to generate (e.g., 'Hero,Features,Pricing')",
+          required: false,
+        },
+      ],
+    },
   ];
 }
 
@@ -59,6 +81,8 @@ export function getPrompt(
       return buildPagePrompt(args);
     case "component_audit":
       return componentAuditPrompt(args);
+    case "design_to_code":
+      return designToCodePrompt(args);
     default:
       throw new Error(`Unknown prompt: ${name}`);
   }
@@ -141,6 +165,48 @@ Follow this workflow:
    - Reference the WCAG criterion if applicable
 
 5. **Generate fixed version**: If there are critical issues, use generate_component to create a corrected version that passes all checks.`,
+        },
+      },
+    ],
+  };
+}
+
+function designToCodePrompt(args: Record<string, string>) {
+  const figmaFileKey = args.figma_file_key || "YOUR_FILE_KEY";
+  const framework = args.framework || "react";
+  const sections = args.sections
+    ? args.sections.split(",").map((s) => s.trim())
+    : ["Header", "Hero", "Features", "Footer"];
+
+  return {
+    description: `Design-to-code: Figma → ${framework} components with stories`,
+    messages: [
+      {
+        role: "user" as const,
+        content: {
+          type: "text" as const,
+          text: `Complete design-to-code workflow for a ${framework} project using Figma file "${figmaFileKey}".
+
+Follow these steps in order:
+
+1. **Extract design tokens**: Use extract_figma_styles with figma_file_key "${figmaFileKey}".
+   Ask the user for their Figma Personal Access Token (figma_pat) if needed.
+
+2. **Verify tokens**: Read the ui://tokens/active resource. Confirm tokens are loaded and summarize what was extracted.
+
+3. **Generate components**: For each section, use generate_component:
+${sections.map((s, i) => `   ${i + 1}. ${s}`).join("\n")}
+   - Set framework to "${framework}", include_styles: true, responsive: true
+
+4. **Audit each component**: Run audit_component on each generated component with all categories and wcag_level "AA". Fix any critical or major issues.
+
+5. **Generate Storybook stories**: For each component, use generate_story with the component code and framework "${framework}".
+
+6. **Summary**: Present all generated files organized by component:
+   - Component file
+   - Styles file (if separate)
+   - Story file
+   - Audit score`,
         },
       },
     ],
