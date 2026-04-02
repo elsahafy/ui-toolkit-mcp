@@ -124,6 +124,9 @@ function inferDefault(type: string): string {
   if (/boolean/i.test(type)) return "false";
   if (/number/i.test(type)) return "0";
   if (/React\.ReactNode|ReactNode|string/i.test(type)) return '"Example"';
+  if (/=>|Function|Handler|Callback/i.test(type)) return "() => {}";
+  if (/\[\]|Array/i.test(type)) return "[]";
+  if (/object|Record/i.test(type)) return "{}";
   return '""';
 }
 

@@ -1,4 +1,5 @@
 import type { Framework, ComponentOutput, NormalizedToken, Variant, Size } from "./types.js";
+import { kebab } from "./utils.js";
 
 // ========================================
 // FRAMEWORK-SPECIFIC COMPONENT GENERATORS
@@ -25,15 +26,12 @@ const sizeMap: Record<Size, { padding: string; fontSize: string; gap: string }> 
 
 const INCLUDED_CATEGORIES = new Set(["color", "spacing", "typography", "borderRadius", "shadow", "sizing", "opacity"]);
 
-// Track which tokens are actually used during CSS generation
-let usedTokenNames: string[] = [];
-
-function buildTokenStyles(tokens: ReadonlyMap<string, NormalizedToken>): string[] {
+function buildTokenStyles(tokens: ReadonlyMap<string, NormalizedToken>, usedNames: string[]): string[] {
   const lines: string[] = [];
   for (const [, token] of tokens) {
     if (INCLUDED_CATEGORIES.has(token.category)) {
       lines.push(`  ${token.cssVariable}: ${token.value};`);
-      usedTokenNames.push(token.cssVariable);
+      usedNames.push(token.cssVariable);
     }
   }
   return lines;
@@ -47,9 +45,9 @@ const variantStyles: Record<Variant, string> = {
   elevated: "\n  box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1));",
 };
 
-function buildCSS(name: string, params: GenerateParams): string {
+function buildCSS(name: string, params: GenerateParams, usedNames: string[]): string {
   const sizing = sizeMap[params.size];
-  const tokenStyles = params.includeStyles ? buildTokenStyles(params.tokens) : [];
+  const tokenStyles = params.includeStyles ? buildTokenStyles(params.tokens, usedNames) : [];
   const tokenBlock = tokenStyles.length > 0 ? `\n  /* Design Tokens */\n${tokenStyles.join("\n")}\n` : "";
   const variantBlock = variantStyles[params.variant];
 
@@ -71,16 +69,10 @@ function buildCSS(name: string, params: GenerateParams): string {
 }${responsiveBlock}`;
 }
 
-function kebab(name: string): string {
-  return name
-    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
-    .replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2")
-    .toLowerCase();
-}
 
-function generateReact(params: GenerateParams): ComponentOutput {
+function generateReact(params: GenerateParams, usedNames: string[]): ComponentOutput {
   const { componentName, description } = params;
-  const css = buildCSS(componentName, params);
+  const css = buildCSS(componentName, params, usedNames);
 
   const markup = `import React from "react";
 import styles from "./${componentName}.module.css";
@@ -128,12 +120,12 @@ describe("${componentName}", () => {
 });`
     : "";
 
-  return { componentName, framework: "react", markup, styles: css, test, tokensUsed: getUsedTokenNames() };
+  return { componentName, framework: "react", markup, styles: css, test, tokensUsed: [...usedNames] };
 }
 
-function generateVue(params: GenerateParams): ComponentOutput {
+function generateVue(params: GenerateParams, usedNames: string[]): ComponentOutput {
   const { componentName, description } = params;
-  const css = buildCSS(componentName, params);
+  const css = buildCSS(componentName, params, usedNames);
 
   const markup = `<script setup lang="ts">
 /**
@@ -158,12 +150,12 @@ defineProps<{
 ${css}
 </style>`;
 
-  return { componentName, framework: "vue", markup, styles: "", test: "", tokensUsed: getUsedTokenNames() };
+  return { componentName, framework: "vue", markup, styles: "", test: "", tokensUsed: [...usedNames] };
 }
 
-function generateSvelte(params: GenerateParams): ComponentOutput {
+function generateSvelte(params: GenerateParams, usedNames: string[]): ComponentOutput {
   const { componentName, description } = params;
-  const css = buildCSS(componentName, params);
+  const css = buildCSS(componentName, params, usedNames);
 
   const markup = `<script lang="ts">
   /**
@@ -185,12 +177,12 @@ function generateSvelte(params: GenerateParams): ComponentOutput {
 ${css}
 </style>`;
 
-  return { componentName, framework: "svelte", markup, styles: "", test: "", tokensUsed: getUsedTokenNames() };
+  return { componentName, framework: "svelte", markup, styles: "", test: "", tokensUsed: [...usedNames] };
 }
 
-function generateAngular(params: GenerateParams): ComponentOutput {
+function generateAngular(params: GenerateParams, usedNames: string[]): ComponentOutput {
   const { componentName, description } = params;
-  const css = buildCSS(componentName, params);
+  const css = buildCSS(componentName, params, usedNames);
   const selector = kebab(componentName);
 
   const markup = `import { Component } from "@angular/core";
@@ -216,12 +208,12 @@ ${css.split("\n").map((l) => "    " + l).join("\n")}
 })
 export class ${componentName}Component {}`;
 
-  return { componentName, framework: "angular", markup, styles: "", test: "", tokensUsed: getUsedTokenNames() };
+  return { componentName, framework: "angular", markup, styles: "", test: "", tokensUsed: [...usedNames] };
 }
 
-function generateWebComponent(params: GenerateParams): ComponentOutput {
+function generateWebComponent(params: GenerateParams, usedNames: string[]): ComponentOutput {
   const { componentName, description } = params;
-  const css = buildCSS(componentName, params);
+  const css = buildCSS(componentName, params, usedNames);
   const tagName = kebab(componentName);
 
   const markup = `/**
@@ -253,14 +245,11 @@ customElements.define("${tagName}", ${componentName});
 
 export { ${componentName} };`;
 
-  return { componentName, framework: "web-components", markup, styles: "", test: "", tokensUsed: getUsedTokenNames() };
+  return { componentName, framework: "web-components", markup, styles: "", test: "", tokensUsed: [...usedNames] };
 }
 
-function getUsedTokenNames(): string[] {
-  return [...usedTokenNames];
-}
 
-const generators: Record<Framework, (params: GenerateParams) => ComponentOutput> = {
+const generators: Record<Framework, (params: GenerateParams, usedNames: string[]) => ComponentOutput> = {
   react: generateReact,
   vue: generateVue,
   svelte: generateSvelte,
@@ -269,7 +258,7 @@ const generators: Record<Framework, (params: GenerateParams) => ComponentOutput>
 };
 
 export function generateComponentMarkup(params: GenerateParams): ComponentOutput {
-  usedTokenNames = []; // Reset tracking for each generation
+  const usedNames: string[] = [];
   const generator = generators[params.framework];
-  return generator(params);
+  return generator(params, usedNames);
 }

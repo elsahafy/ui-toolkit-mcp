@@ -29,16 +29,22 @@ const rules: readonly Rule[] = [
     level: "A",
     test: (m) => {
       const inputs = m.match(/<(?:input|select|textarea)[^>]*>/gi) || [];
-      return inputs.some((input) =>
-        !/aria-label/i.test(input) &&
-        !/aria-labelledby/i.test(input) &&
-        !/title=/i.test(input) &&
-        !/id=/i.test(input) || (
-          /id=["']([^"']+)["']/i.test(input) &&
-          !new RegExp(`<label[^>]*for=["']${input.match(/id=["']([^"']+)["']/i)?.[1]}["']`, "i").test(m) &&
-          !/<label[^>]*>[^<]*<(?:input|select|textarea)/i.test(m)
-        )
-      );
+      const hasWrappingLabel = /<label[^>]*>[^<]*<(?:input|select|textarea)/i.test(m);
+      return inputs.some((input) => {
+        // Skip if input has inline labeling
+        if (/aria-label=/i.test(input)) return false;
+        if (/aria-labelledby=/i.test(input)) return false;
+        if (/title=/i.test(input)) return false;
+        // Check for wrapping label
+        if (hasWrappingLabel) return false;
+        // Check for label[for] matching input id
+        const idMatch = input.match(/id=["']([^"']+)["']/i);
+        if (idMatch) {
+          const hasMatchingLabel = new RegExp(`<label[^>]*for=["']${idMatch[1]}["']`, "i").test(m);
+          if (hasMatchingLabel) return false;
+        }
+        return true;
+      });
     },
     message: "Form inputs found without associated labels",
     suggestion: "Associate inputs with <label for='id'>, wrapping <label>, aria-label, aria-labelledby, or title attribute.",

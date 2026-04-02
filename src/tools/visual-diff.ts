@@ -1,6 +1,9 @@
 import { inflateSync } from "node:zlib";
 import type { ToolResponse, VisualDiffResult } from "../lib/types.js";
-import { validateBase64 } from "../lib/validation.js";
+import { validateBase64, validateMaxLength } from "../lib/validation.js";
+import { clamp } from "../lib/utils.js";
+
+const MAX_IMAGE_SIZE = 50_000_000; // 50MB base64
 
 export async function handleVisualDiff(
   args: Record<string, unknown>
@@ -11,6 +14,12 @@ export async function handleVisualDiff(
   if (!beforeB64 || !afterB64) {
     return error("Missing required parameters: before_image, after_image");
   }
+
+  const beforeLenErr = validateMaxLength(beforeB64, MAX_IMAGE_SIZE, "before_image");
+  if (beforeLenErr) return error(beforeLenErr);
+
+  const afterLenErr = validateMaxLength(afterB64, MAX_IMAGE_SIZE, "after_image");
+  if (afterLenErr) return error(afterLenErr);
 
   const beforeErr = validateBase64(beforeB64, "before_image");
   if (beforeErr) return error(beforeErr);
@@ -210,10 +219,6 @@ function formatResult(result: VisualDiffResult): ToolResponse {
   return { content: [{ type: "text", text: parts.join("\n") }] };
 }
 
-function clamp(val: number | undefined, min: number, max: number, def: number): number {
-  if (val === undefined || typeof val !== "number") return def;
-  return Math.min(max, Math.max(min, val));
-}
 
 function error(message: string): ToolResponse {
   return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };

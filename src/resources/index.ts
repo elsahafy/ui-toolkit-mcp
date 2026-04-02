@@ -4,6 +4,7 @@ import { getAccessibilityRuleMetadata } from "../lib/accessibility-rules.js";
 import { getPerformanceRuleMetadata } from "../lib/performance-rules.js";
 import { getResponsiveRuleMetadata } from "../lib/responsive-rules.js";
 import { getRegistryAsJSON, getComponentCount } from "../lib/component-registry.js";
+import { getToolDefinitions } from "../tools/index.js";
 
 // ========================================
 // RESOURCE DEFINITIONS
@@ -86,8 +87,8 @@ export function readResource(uri: string): { uri: string; mimeType: string; text
         text: JSON.stringify({
           name: "@elsahafy/ui-toolkit-mcp",
           version: "2.0.0",
-          tools: 14,
-          resources: 5,
+          tools: getToolDefinitions().length,
+          resources: getResourceDefinitions().length,
           prompts: 3,
           components: getComponentCount(),
           tokenCount: getTokenCount(),

@@ -2,6 +2,7 @@ import type { ToolResponse, Framework, Variant, Size } from "../lib/types.js";
 import { getTokens } from "../lib/token-store.js";
 import { generateComponentMarkup } from "../lib/framework-templates.js";
 import { validateMaxLength, validateIdentifier } from "../lib/validation.js";
+import { fileExt } from "../lib/utils.js";
 import { registerComponent } from "../lib/component-registry.js";
 import { handleAuditComponent } from "./audit-component.js";
 
@@ -22,6 +23,9 @@ export async function handleGenerateComponent(
 
   const descErr = validateMaxLength(description, 2000, "description");
   if (descErr) return error(descErr);
+
+  const nameLenErr = validateMaxLength(componentName, 100, "component_name");
+  if (nameLenErr) return error(nameLenErr);
 
   const nameErr = validateIdentifier(componentName);
   if (nameErr) return error(nameErr);
@@ -113,15 +117,6 @@ export async function handleGenerateComponent(
   return { content: [{ type: "text", text: parts.join("\n") }] };
 }
 
-function fileExt(framework: Framework): string {
-  switch (framework) {
-    case "react": return "tsx";
-    case "vue": return "vue";
-    case "svelte": return "svelte";
-    case "angular": return "typescript";
-    case "web-components": return "typescript";
-  }
-}
 
 function error(message: string): ToolResponse {
   return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };

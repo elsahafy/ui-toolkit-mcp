@@ -18,6 +18,9 @@ export async function handleGenerateStory(
   const codeErr = validateMaxLength(componentCode, 200000, "component_code");
   if (codeErr) return error(codeErr);
 
+  const nameLenErr = validateMaxLength(componentName, 100, "component_name");
+  if (nameLenErr) return error(nameLenErr);
+
   const nameErr = validateIdentifier(componentName);
   if (nameErr) return error(nameErr);
 
@@ -26,6 +29,8 @@ export async function handleGenerateStory(
   }
 
   const storyTitle = (args.story_title as string) || `Components/${componentName}`;
+  const titleErr = validateMaxLength(storyTitle, 200, "story_title");
+  if (titleErr) return error(titleErr);
   const fw = framework as StoryFramework;
 
   const detectedProps = detectProps(componentCode, fw);

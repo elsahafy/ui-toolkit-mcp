@@ -60,11 +60,7 @@ export async function handleAutoFixComponent(
     if (!fix) continue;
 
     const before = fixed;
-    if (typeof fix.replacement === "function") {
-      fixed = fixed.replace(fix.pattern, fix.replacement);
-    } else {
-      fixed = fixed.replace(fix.pattern, fix.replacement);
-    }
+    fixed = fixed.replace(fix.pattern, fix.replacement as string);
     if (fixed !== before) {
       applied.push(`- ${fix.description} (${finding.id})`);
     }
