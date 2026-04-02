@@ -21,6 +21,10 @@ export async function handleAuditComponent(
   if (lenErr) return error(lenErr);
 
   const componentName = (args.component_name as string) || "Unnamed Component";
+  if (args.component_name) {
+    const nameErr = validateMaxLength(componentName, 100, "component_name");
+    if (nameErr) return error(nameErr);
+  }
   const framework = (args.framework as string) || "html";
 
   if (!FRAMEWORKS.has(framework)) {

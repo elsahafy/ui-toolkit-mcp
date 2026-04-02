@@ -23,6 +23,10 @@ export async function handleImportDesignTokens(
   }
 
   const rawNamespace = (args.namespace as string) || "";
+  if (rawNamespace) {
+    const nsErr = validateMaxLength(rawNamespace, 50, "namespace");
+    if (nsErr) return error(nsErr);
+  }
   const namespace = rawNamespace ? sanitizeNamespace(rawNamespace) : "";
   const strategy = ((args.merge_strategy as string) || "replace") as MergeStrategy;
 

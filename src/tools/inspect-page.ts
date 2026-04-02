@@ -1,6 +1,7 @@
 import type { ToolResponse, WaitForEvent } from "../lib/types.js";
 import { validateUrl, getPlaywright, getBrowser, getInstallMessage } from "../lib/browser.js";
 import { validateMaxLength } from "../lib/validation.js";
+import { clamp } from "../lib/utils.js";
 
 const WAIT_EVENTS = new Set(["load", "domcontentloaded", "networkidle"]);
 
@@ -133,10 +134,6 @@ export async function handleInspectPage(
   }
 }
 
-function clamp(val: number | undefined, min: number, max: number, def: number): number {
-  if (val === undefined || typeof val !== "number") return def;
-  return Math.min(max, Math.max(min, val));
-}
 
 function error(message: string): ToolResponse {
   return { content: [{ type: "text", text: `Error: ${message}` }], isError: true };

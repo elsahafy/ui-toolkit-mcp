@@ -1,6 +1,7 @@
 import type { ToolResponse, Framework } from "../lib/types.js";
 import { listComponents, getComponent } from "../lib/component-registry.js";
 import { validateMaxLength } from "../lib/validation.js";
+import { kebab, fileExt } from "../lib/utils.js";
 
 const FRAMEWORKS = new Set(["react", "vue", "svelte", "angular", "web-components"]);
 
@@ -139,20 +140,6 @@ ${imports}
 <footer role="contentinfo">
   <!-- Footer content -->
 </footer>${missingNote}`;
-}
-
-function kebab(name: string): string {
-  return name.replace(/([a-z0-9])([A-Z])/g, "$1-$2").replace(/([A-Z]+)([A-Z][a-z])/g, "$1-$2").toLowerCase();
-}
-
-function fileExt(fw: Framework): string {
-  switch (fw) {
-    case "react": return "tsx";
-    case "vue": return "vue";
-    case "svelte": return "svelte";
-    case "angular": return "typescript";
-    case "web-components": return "html";
-  }
 }
 
 function error(message: string): ToolResponse {

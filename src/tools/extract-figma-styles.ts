@@ -23,7 +23,14 @@ export async function handleExtractFigmaStyles(
     return error("Invalid figma_file_key. Use the alphanumeric ID from the Figma file URL.");
   }
 
+  const patErr = validateMaxLength(pat, 500, "figma_pat");
+  if (patErr) return error(patErr);
+
   const rawNamespace = (args.namespace as string) || "";
+  if (rawNamespace) {
+    const nsErr = validateMaxLength(rawNamespace, 50, "namespace");
+    if (nsErr) return error(nsErr);
+  }
   const namespace = rawNamespace ? sanitizeNamespace(rawNamespace) : "";
   const strategy = ((args.merge_strategy as string) || "replace") as MergeStrategy;
   if (!STRATEGIES.has(strategy)) {
