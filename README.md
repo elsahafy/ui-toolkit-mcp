@@ -4,7 +4,7 @@
 [![CI](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/ci.yml)
 [![Snyk Security](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/snyk.yml/badge.svg)](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/snyk.yml)
 [![Known Vulnerabilities](https://snyk.io/test/github/elsahafy/ui-toolkit-mcp/badge.svg)](https://snyk.io/test/github/elsahafy/ui-toolkit-mcp)
-[![Socket Badge](https://socket.dev/api/badge/npm/package/@elsahafy/ui-toolkit-mcp)](https://socket.dev/npm/package/@elsahafy/ui-toolkit-mcp)
+[![Socket](https://img.shields.io/badge/Socket-Supply_Chain_78%25-green)](https://socket.dev/npm/package/@elsahafy/ui-toolkit-mcp)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 Full-stack UI toolkit MCP server: generate components, manage design tokens, audit markup, inspect live pages, compare screenshots, generate Storybook stories, and extract Figma styles -- across React, Vue, Svelte, Angular, and Web Components.
