@@ -1,6 +1,6 @@
 # UI Toolkit MCP Server
 
-[![npm version](https://badge.fury.io/js/@elsahafy%2Fui-toolkit-mcp.svg)](https://www.npmjs.com/package/@elsahafy/ui-toolkit-mcp)
+[![npm version](https://img.shields.io/npm/v/@elsahafy/ui-toolkit-mcp)](https://www.npmjs.com/package/@elsahafy/ui-toolkit-mcp)
 [![CI](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/ci.yml)
 [![Tests](https://img.shields.io/badge/tests-184_passing-brightgreen)](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/ci.yml)
 [![Snyk Security](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/snyk.yml/badge.svg)](https://github.com/elsahafy/ui-toolkit-mcp/actions/workflows/snyk.yml)
