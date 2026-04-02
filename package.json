@@ -1,6 +1,6 @@
 {
   "name": "@elsahafy/ui-toolkit-mcp",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Full-stack UI toolkit MCP server: generate components, manage design tokens, and audit markup across React, Vue, Svelte, Angular, and Web Components.",
   "type": "module",
   "main": "dist/index.js",
